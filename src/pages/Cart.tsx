@@ -126,28 +126,42 @@ export const Cart = () => {
             Delivery Details
           </h3>
           
-          <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-4">
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Date</label>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Select Delivery Date</label>
               <input 
                 type="date" 
                 value={deliveryDate}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setDeliveryDate(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-terracotta)]"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-terracotta)]"
               />
             </div>
+            
             <div>
-              <label className="text-xs font-semibold text-gray-500 mb-1 block">Time Slot</label>
-              <select 
-                value={deliveryTime}
-                onChange={(e) => setDeliveryTime(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-terracotta)]"
-              >
-                <option value="">Select</option>
-                <option value="10am-1pm">10 AM - 1 PM</option>
-                <option value="2pm-6pm">2 PM - 6 PM</option>
-                <option value="6pm-8pm">6 PM - 8 PM</option>
-              </select>
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Select Time Slot</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  '10 AM - 1 PM',
+                  '2 PM - 6 PM',
+                  '6 PM - 9 PM'
+                ].map((slot) => (
+                  <button
+                    key={slot}
+                    onClick={() => setDeliveryTime(slot)}
+                    className={`py-3 px-4 rounded-xl text-xs font-bold border transition-all ${
+                      deliveryTime === slot
+                        ? 'bg-[var(--color-terracotta)] border-[var(--color-terracotta)] text-white shadow-md'
+                        : 'bg-gray-50 border-gray-100 text-gray-500 hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <Clock size={14} />
+                      {slot}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

@@ -109,7 +109,7 @@ export const Checkout = () => {
           deliveryDate: checkoutState.deliveryDate instanceof Date 
             ? checkoutState.deliveryDate.toISOString() 
             : (checkoutState.deliveryDate || new Date(Date.now() + 86400000).toISOString()),
-          deliverySlot: checkoutState.deliveryTime || '10:00 AM - 01:00 PM',
+          deliverySlot: checkoutState.deliveryTime || '10 AM - 1 PM',
           giftWrap: checkoutState.giftWrap || false
         };
 
@@ -219,7 +219,7 @@ export const Checkout = () => {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-400 font-medium">Time Slot</span>
                 <span className="text-xs font-bold text-[var(--color-chocolate)]">
-                  {checkoutState.deliveryTime || '10:00 AM - 01:00 PM'}
+                  {checkoutState.deliveryTime || '10 AM - 1 PM'}
                 </span>
               </div>
             </div>

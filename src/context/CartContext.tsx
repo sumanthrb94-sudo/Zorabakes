@@ -49,7 +49,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     isGiftWrap = false,
     giftMessage?: string,
     deliveryDate = new Date(),
-    deliverySlot = '10am-1pm'
+    deliverySlot = '10 AM - 1 PM'
   ) => {
     let isNew = true;
     setCart((prevCart) => {
