@@ -26,7 +26,7 @@ export const Home = () => {
       <section className="relative h-[65vh] w-full bg-[var(--color-beige)] overflow-hidden">
         <div className="absolute inset-0 bg-black/20 z-10" />
         <img 
-          src="https://images.unsplash.com/photo-1555507036-ab1f40ce88f4?auto=format&fit=crop&q=80&w=800" 
+          src="https://images.unsplash.com/photo-1517433367423-c7e5b0f35086?auto=format&fit=crop&q=80&w=1200" 
           alt="Freshly baked goods" 
           className="w-full h-full object-cover"
           referrerPolicy="no-referrer"
@@ -84,16 +84,23 @@ export const Home = () => {
           </Link>
         </div>
         <div className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 -mx-4 px-4 snap-x">
-          {['Cakes', 'Brownies', 'Cookies', 'Bread', 'Loaves', 'Custom'].map((cat, i) => (
+          {[
+            { name: 'Cakes', img: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&q=80&w=200' },
+            { name: 'Brownies', img: 'https://images.unsplash.com/photo-1461009112677-30cf7d86a48f?auto=format&fit=crop&q=80&w=200' },
+            { name: 'Cookies', img: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&q=80&w=200' },
+            { name: 'Bread', img: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&q=80&w=200' },
+            { name: 'Loaves', img: 'https://images.unsplash.com/photo-1534620808146-d33bb39128b2?auto=format&fit=crop&q=80&w=200' },
+            { name: 'Custom', img: 'https://images.unsplash.com/photo-1486427944299-d1955d23e34d?auto=format&fit=crop&q=80&w=200' }
+          ].map((cat, i) => (
             <Link 
-              key={cat} 
-              to={`/shop?category=${cat.toLowerCase()}`}
+              key={cat.name} 
+              to={`/shop?category=${cat.name.toLowerCase()}`}
               className="snap-start shrink-0 flex flex-col items-center gap-3"
             >
               <div className="w-20 h-20 rounded-full bg-[var(--color-beige)] border-2 border-[var(--color-cream)] shadow-sm flex items-center justify-center overflow-hidden">
                 <img 
-                  src={`https://source.unsplash.com/random/200x200/?${cat.toLowerCase()},bakery`} 
-                  alt={cat}
+                  src={cat.img} 
+                  alt={cat.name}
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                   onError={(e) => {
@@ -101,7 +108,7 @@ export const Home = () => {
                   }}
                 />
               </div>
-              <span className="text-sm font-medium text-[var(--color-chocolate)]">{cat}</span>
+              <span className="text-sm font-medium text-[var(--color-chocolate)]">{cat.name}</span>
             </Link>
           ))}
         </div>

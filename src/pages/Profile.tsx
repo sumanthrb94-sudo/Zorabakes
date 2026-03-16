@@ -1,16 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, MapPin, Package, Heart, Settings, LogOut, ChevronRight, Star } from 'lucide-react';
+import { User, MapPin, Package, Settings, LogOut, ChevronRight, Star, Bell } from 'lucide-react';
 
 export const Profile = () => {
   const { user, profile, loading, login, logout } = useAuth();
+  const navigate = useNavigate();
 
   const menuItems = [
-    { icon: Package, label: 'My Orders', desc: 'Track, return, or buy things again' },
-    { icon: MapPin, label: 'Saved Addresses', desc: 'Manage delivery locations' },
-    { icon: Heart, label: 'Wishlist', desc: 'Your favorite baked goods' },
-    { icon: Settings, label: 'Account Settings', desc: 'Password, notifications, preferences' },
+    { icon: Package, label: 'My Orders', desc: 'Track, return, or buy things again', path: '/orders' },
+    { icon: Bell, label: 'Notifications', desc: 'Order updates and alerts', path: '/notifications' },
+    { icon: MapPin, label: 'Saved Addresses', desc: 'Manage delivery locations', path: '/addresses' },
+    { icon: Settings, label: 'Account Settings', desc: 'Password, notifications, preferences', path: '/settings' },
   ];
 
   if (loading) {
@@ -109,6 +111,7 @@ export const Profile = () => {
           {menuItems.map((item, index) => (
             <button 
               key={item.label}
+              onClick={() => item.path && navigate(item.path)}
               className={`w-full flex items-center p-4 transition-colors hover:bg-gray-50 ${
                 index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
               }`}

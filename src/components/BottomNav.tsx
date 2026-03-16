@@ -1,16 +1,22 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
-import { Home, ShoppingBag, ShoppingCart, User } from 'lucide-react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, ShoppingBag, User, MapPin } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { motion } from 'framer-motion';
 
 export const BottomNav = () => {
   const { cartCount } = useCart();
+  const location = useLocation();
+
+  // Hide bottom nav on checkout page
+  if (location.pathname === '/checkout') {
+    return null;
+  }
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
     { icon: ShoppingBag, label: 'Shop', path: '/shop' },
-    { icon: ShoppingCart, label: 'Cart', path: '/cart' },
+    { icon: MapPin, label: 'Track', path: '/track' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
 
@@ -30,16 +36,12 @@ export const BottomNav = () => {
             {({ isActive }) => (
               <>
                 <div className="relative">
-                  <item.icon 
-                    size={24} 
-                    strokeWidth={isActive ? 2.5 : 2} 
-                    fill={isActive ? 'currentColor' : 'none'} 
-                  />
-                  {item.label === 'Cart' && cartCount > 0 && (
+                  <item.icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+                  {item.label === 'Shop' && cartCount > 0 && (
                     <motion.div
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-2 bg-[var(--color-terracotta)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-white"
+                      className="absolute -top-1 -right-2 bg-[var(--color-terracotta)] text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center"
                     >
                       {cartCount}
                     </motion.div>

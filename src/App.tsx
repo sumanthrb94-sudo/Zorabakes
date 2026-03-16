@@ -16,6 +16,9 @@ import { Cart } from './pages/Cart';
 import { Checkout } from './pages/Checkout';
 import { Profile } from './pages/Profile';
 import { OrderTracking } from './pages/OrderTracking';
+import { OrderHistory } from './pages/OrderHistory';
+import { Notifications } from './pages/Notifications';
+import { SavedAddresses } from './pages/SavedAddresses';
 
 export default function App() {
   return (
@@ -31,7 +34,10 @@ export default function App() {
                   <Route path="cart" element={<Cart />} />
                   <Route path="checkout" element={<Checkout />} />
                   <Route path="profile" element={<Profile />} />
+                  <Route path="orders" element={<OrderHistory />} />
+                  <Route path="notifications" element={<Notifications />} />
                   <Route path="track" element={<OrderTracking />} />
+                  <Route path="addresses" element={<SavedAddresses />} />
                 </Route>
               </Routes>
             </Router>

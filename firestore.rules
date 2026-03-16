@@ -43,9 +43,12 @@ service cloud.firestore {
     }
 
     function isValidOrder(data) {
-      return (data.userId == 'guest' || (isAuthenticated() && data.userId == request.auth.uid)) &&
+      let isGuest = data.userId == 'guest';
+      let isAuthUser = isAuthenticated() && data.userId == request.auth.uid;
+      return (isGuest || isAuthUser) &&
              data.total is number && data.total >= 0 &&
-             data.status in ['received', 'confirmed', 'baking', 'quality_check', 'out_for_delivery', 'delivered'];
+             data.status in ['received', 'confirmed', 'baking', 'quality_check', 'out_for_delivery', 'delivered'] &&
+             data.items is list && data.items.size() > 0;
     }
 
     // Rules
@@ -63,9 +66,18 @@ service cloud.firestore {
     }
 
     match /orders/{orderId} {
+      // NOTE: Querying orders by userId and ordering by createdAt requires a composite index:
+      // Collection: orders, Fields: userId (Ascending), createdAt (Descending)
       allow read: if resource.data.userId == 'guest' || (isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin()));
       allow create: if isValidOrder(request.resource.data);
       allow update: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin(); // Only system/admin can create notifications
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     match /test/connection {

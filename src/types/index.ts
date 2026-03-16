@@ -67,6 +67,7 @@ export interface Address {
 
 export interface Order {
   id: string;
+  userId: string;
   items: CartItem[];
   customer: Customer;
   address: Address;
@@ -76,4 +77,16 @@ export interface Order {
   total: number;
   paymentMethod: 'cod' | 'online';
   loyaltyPointsEarned: number;
+  createdAt: string;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'order_status' | 'promotion' | 'system';
+  read: boolean;
+  createdAt: string;
+  orderId?: string;
 }

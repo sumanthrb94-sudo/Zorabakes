@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { CartItem, Product, Variant } from '../types';
 import toast from 'react-hot-toast';
 
@@ -51,6 +51,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     deliveryDate = new Date(),
     deliverySlot = '10am-1pm'
   ) => {
+    let isNew = true;
     setCart((prevCart) => {
       const existingItemIndex = prevCart.findIndex(
         (item) => 
@@ -66,11 +67,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
       if (existingItemIndex >= 0) {
         const newCart = [...prevCart];
         newCart[existingItemIndex].quantity += quantity;
-        toast.success(`Added more ${product.name} to your box!`);
+        isNew = false;
         return newCart;
       }
 
-      toast.success(`Zora is packing your ${product.name}!`);
       return [
         ...prevCart,
         {
@@ -86,6 +86,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         },
       ];
     });
+
+    if (isNew) {
+      toast.success(`Zora is packing your ${product.name}!`);
+    } else {
+      toast.success(`Added more ${product.name} to your box!`);
+    }
   };
 
   const removeFromCart = (cartItemId: string) => {
@@ -113,16 +119,31 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     setCart([]);
   };
 
-  const cartTotal = cart.reduce((total, item) => {
-    const itemPrice = item.product.price + item.variant.priceModifier;
-    const giftWrapFee = item.isGiftWrap ? 100 : 0;
-    return total + (itemPrice + giftWrapFee) * item.quantity;
-  }, 0);
+  const cartTotal = useMemo(() => {
+    return cart.reduce((total, item) => {
+      const itemPrice = item.product.price + item.variant.priceModifier;
+      const giftWrapFee = item.isGiftWrap ? 100 : 0;
+      return total + (itemPrice + giftWrapFee) * item.quantity;
+    }, 0);
+  }, [cart]);
 
-  const cartCount = cart.reduce((count, item) => count + item.quantity, 0);
+  const cartCount = useMemo(() => {
+    return cart.reduce((count, item) => count + item.quantity, 0);
+  }, [cart]);
+
+  const value = useMemo(() => ({
+    cart,
+    addToCart,
+    removeFromCart,
+    updateQuantity,
+    updateItemDetails,
+    clearCart,
+    cartTotal,
+    cartCount
+  }), [cart, cartTotal, cartCount]);
 
   return (
-    <CartContext.Provider value={{ cart, addToCart, removeFromCart, updateQuantity, updateItemDetails, clearCart, cartTotal, cartCount }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );

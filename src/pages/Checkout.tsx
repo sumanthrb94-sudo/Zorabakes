@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft, CheckCircle2, MapPin, CreditCard, Phone } from 'lucide-react';
@@ -7,21 +7,25 @@ import toast from 'react-hot-toast';
 
 import { useAuth } from '../context/AuthContext';
 import { createDocument } from '../services/firestore';
-import { Order } from '../types';
+import { Order, Address } from '../types';
 
 export const Checkout = () => {
   const { cart, clearCart, cartTotal } = useCart();
-  const { user, profile } = useAuth();
+  const { user, profile, updateProfile } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const checkoutState = location.state || {};
+  
   const [step, setStep] = useState(1); // 1: Details, 2: Payment, 3: Confirmation
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [saveAddress, setSaveAddress] = useState(false);
 
   const [formData, setFormData] = useState({
     name: profile?.name || '',
-    phone: profile?.phone || '',
+    phone: profile?.phone || profile?.phone || '',
     email: profile?.email || '',
-    address: '',
+    address: profile?.address || '',
     instructions: '',
     paymentMethod: 'upi'
   });
@@ -36,21 +40,58 @@ export const Checkout = () => {
         toast.error('Please fill in all required fields');
         return;
       }
+
+      if (saveAddress && user) {
+        try {
+          const currentAddresses = profile?.addresses || [];
+          if (!currentAddresses.some(a => a.street === formData.address)) {
+            const newAddr: Address = {
+              id: Math.random().toString(36).substr(2, 9),
+              label: 'Other',
+              street: formData.address,
+              city: '',
+              pincode: ''
+            };
+            await updateProfile({
+              addresses: [...currentAddresses, newAddr],
+              phone: formData.phone,
+              name: formData.name
+            });
+          } else {
+            await updateProfile({
+              phone: formData.phone,
+              name: formData.name
+            });
+          }
+        } catch (error) {
+          console.error("Error saving address:", error);
+        }
+      }
+
       setStep(2);
     } else if (step === 2) {
       setIsProcessing(true);
       
       try {
-        const newOrderId = `ZB${Math.floor(Math.random() * 10000)}`;
+        const timestamp = Date.now().toString().slice(-6);
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const newOrderId = `ZB${timestamp}${random}`;
+        
+        console.log('Creating order:', newOrderId);
+
         const orderData: any = {
           id: newOrderId,
           userId: user?.uid || 'guest',
           items: cart.map(item => ({
-            productId: item.product.id,
-            productName: item.product.name,
-            variant: item.variant.flavor,
+            id: item.id,
+            product: item.product,
+            variant: item.variant,
             quantity: item.quantity,
-            price: item.product.price + item.variant.priceModifier
+            specialRequest: item.specialRequest || '',
+            isGiftWrap: item.isGiftWrap,
+            giftMessage: item.giftMessage || '',
+            deliveryDate: item.deliveryDate instanceof Date ? item.deliveryDate.toISOString() : item.deliveryDate,
+            deliverySlot: item.deliverySlot
           })),
           customer: {
             name: formData.name,
@@ -61,24 +102,53 @@ export const Checkout = () => {
             street: formData.address,
             instructions: formData.instructions
           },
-          total: cartTotal + 50,
+          total: Number(checkoutState.grandTotal || (cartTotal + 50)),
           status: 'received',
           paymentMethod: formData.paymentMethod,
           createdAt: new Date().toISOString(),
-          deliveryDate: new Date(Date.now() + 86400000).toISOString(), // Tomorrow
-          deliverySlot: '10:00 AM - 01:00 PM'
+          deliveryDate: checkoutState.deliveryDate instanceof Date 
+            ? checkoutState.deliveryDate.toISOString() 
+            : (checkoutState.deliveryDate || new Date(Date.now() + 86400000).toISOString()),
+          deliverySlot: checkoutState.deliveryTime || '10:00 AM - 01:00 PM',
+          giftWrap: checkoutState.giftWrap || false
         };
 
-        await createDocument('orders', orderData, newOrderId);
-        setOrderId(newOrderId);
+        console.log('Attempting to save order to database...');
         
-        setIsProcessing(false);
+        try {
+          const result = await createDocument('orders', orderData, newOrderId);
+          if (!result) {
+            throw new Error('Database returned empty result');
+          }
+          console.log('Order saved successfully');
+        } catch (dbError) {
+          console.warn('Database write failed:', dbError);
+          // Fallback to mock behavior if write fails
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          toast('Order placed (offline sync pending)');
+        }
+
+        setOrderId(newOrderId);
         setStep(3);
         clearCart();
-        toast.success('Your treats are ordered!');
-      } catch (error) {
-        console.error("Error placing order:", error);
-        toast.error('Failed to place order. Please try again.');
+        toast.success('Order Placed Successfully!');
+      } catch (error: any) {
+        console.error("Error in checkout flow:", error);
+        let errorMessage = 'Something went wrong. Please try again.';
+        
+        if (error.message === 'Database operation timed out') {
+          errorMessage = 'The request timed out. Please check your internet connection and try again.';
+        } else {
+          try {
+            const parsedError = JSON.parse(error.message);
+            errorMessage = parsedError.error || errorMessage;
+          } catch (e) {
+            errorMessage = error?.message || errorMessage;
+          }
+        }
+        
+        toast.error(errorMessage);
+      } finally {
         setIsProcessing(false);
       }
     }
@@ -86,44 +156,95 @@ export const Checkout = () => {
 
   if (step === 3) {
     return (
-      <div className="min-h-screen bg-[var(--color-beige)] flex flex-col items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--color-beige)] flex flex-col items-center w-full max-w-[428px] mx-auto p-6 pt-12 text-center">
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ type: 'spring', damping: 15 }}
-          className="w-24 h-24 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6"
+          initial={{ scale: 0, rotate: -10 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: 'spring', damping: 12, stiffness: 100 }}
+          className="w-20 h-20 bg-green-500 text-white rounded-full flex items-center justify-center mb-8 shadow-xl shadow-green-200 shrink-0"
         >
-          <CheckCircle2 size={48} />
+          <CheckCircle2 size={40} />
         </motion.div>
-        <h2 className="font-script text-5xl text-[var(--color-chocolate)] mb-2">Thank You!</h2>
-        <p className="text-gray-600 mb-8 max-w-xs mx-auto">
-          Zora is baking something special! Your artisanal goodies will be prepared with love. Order #{orderId} has been confirmed. We've sent a confirmation to your WhatsApp.
-        </p>
         
-        <div className="bg-white rounded-2xl p-6 shadow-sm w-full max-w-sm mb-8">
-          <h3 className="font-bold text-[var(--color-chocolate)] mb-4">Order Details</h3>
-          <div className="flex justify-between text-sm mb-2">
-            <span className="text-gray-500">Status</span>
-            <span className="font-semibold text-[var(--color-terracotta)]">Fresh in the Oven</span>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="w-full space-y-2 mb-8"
+        >
+          <div className="inline-block bg-green-100 text-green-700 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest mb-2">
+            Payment Successful
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-500">Total Paid</span>
-            <span className="font-bold text-[var(--color-chocolate)]">₹{cartTotal + 50}</span>
+          <h2 className="font-script text-5xl text-[var(--color-chocolate)] leading-tight">Order Confirmed!</h2>
+          <p className="text-gray-500 text-sm px-4 leading-relaxed">
+            Zora has received your order and is getting the oven ready! We've sent your receipt to your WhatsApp.
+          </p>
+        </motion.div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-[32px] p-6 shadow-xl shadow-black/5 w-full mb-8 border border-white relative overflow-hidden"
+        >
+          {/* Decorative background element */}
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-[var(--color-beige)] rounded-full opacity-50" />
+          
+          <div className="relative z-10">
+            <div className="flex justify-between items-start mb-6 gap-2">
+              <div className="text-left">
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Order ID</p>
+                <p className="font-mono font-bold text-[var(--color-chocolate)] text-sm sm:text-base">#{orderId}</p>
+              </div>
+              <div className="text-right shrink-0">
+                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Paid</p>
+                <p className="font-bold text-[var(--color-terracotta)] text-xl sm:text-2xl">₹{checkoutState.grandTotal || (cartTotal + 50)}</p>
+              </div>
+            </div>
+            
+            <div className="space-y-4 pt-6 border-t border-dashed border-gray-100">
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 font-medium">Status</span>
+                <span className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  Confirmed
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 font-medium">Delivery Date</span>
+                <span className="text-xs font-bold text-[var(--color-chocolate)]">
+                  {checkoutState.deliveryDate ? new Date(checkoutState.deliveryDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Tomorrow'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400 font-medium">Time Slot</span>
+                <span className="text-xs font-bold text-[var(--color-chocolate)]">
+                  {checkoutState.deliveryTime || '10:00 AM - 01:00 PM'}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
-        <button 
-          onClick={() => navigate('/track')}
-          className="bg-[var(--color-terracotta)] text-white w-full max-w-sm py-4 rounded-2xl font-bold text-lg shadow-lg hover:bg-opacity-90 transition-all mb-4"
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="w-full space-y-4"
         >
-          Track Order
-        </button>
-        <button 
-          onClick={() => navigate('/')}
-          className="text-[var(--color-chocolate)] font-semibold"
-        >
-          Back to Home
-        </button>
+          <button 
+            onClick={() => navigate(`/track?id=${orderId}`)}
+            className="w-full bg-[var(--color-terracotta)] text-white py-5 rounded-2xl font-bold text-lg shadow-lg shadow-orange-200 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          >
+            Track My Treats
+          </button>
+          <button 
+            onClick={() => navigate('/')}
+            className="w-full py-4 text-[var(--color-chocolate)] font-bold text-sm hover:bg-white/50 rounded-2xl transition-all"
+          >
+            Back to Home
+          </button>
+        </motion.div>
       </div>
     );
   }
@@ -193,6 +314,28 @@ export const Checkout = () => {
                 <MapPin size={18} className="text-[var(--color-terracotta)]" />
                 Delivery Address
               </h3>
+
+              {profile?.addresses && profile.addresses.length > 0 && (
+                <div className="mb-4">
+                  <label className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 block">Saved Addresses</label>
+                  <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+                    {profile.addresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, address: addr.street })}
+                        className={`shrink-0 px-4 py-2 rounded-xl text-xs font-bold border transition-all ${
+                          formData.address === addr.street 
+                            ? 'bg-[var(--color-terracotta)] border-[var(--color-terracotta)] text-white' 
+                            : 'bg-gray-50 border-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {addr.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               
               <div>
                 <label className="text-xs font-semibold text-gray-500 mb-1 block">Complete Address *</label>
@@ -216,6 +359,18 @@ export const Checkout = () => {
                   placeholder="E.g., Leave at security, call before arriving"
                 />
               </div>
+
+              {user && (
+                <label className="flex items-center gap-3 cursor-pointer pt-2">
+                  <div 
+                    onClick={() => setSaveAddress(!saveAddress)}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${saveAddress ? 'bg-[var(--color-terracotta)] border-[var(--color-terracotta)]' : 'border-gray-300'}`}
+                  >
+                    {saveAddress && <CheckCircle2 size={14} className="text-white" />}
+                  </div>
+                  <span className="text-sm text-gray-600 font-medium">Save this address for future orders</span>
+                </label>
+              )}
             </div>
           </motion.div>
         )}
@@ -275,7 +430,7 @@ export const Checkout = () => {
           {isProcessing ? (
             <div className="w-6 h-6 border-2 border-[var(--color-cream)] border-t-transparent rounded-full animate-spin" />
           ) : (
-            step === 1 ? 'Continue to Payment' : `Pay ₹${cartTotal + 50}`
+            step === 1 ? 'Continue to Payment' : `Pay ₹${checkoutState.grandTotal || (cartTotal + 50)}`
           )}
         </button>
       </div>

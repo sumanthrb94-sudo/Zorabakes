@@ -8,17 +8,27 @@ export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Connection test
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration. The client is offline.");
+// Connection test with retry
+export const checkDbConnection = async (retries = 3): Promise<boolean> => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const { getDocs, collection, query, limit } = await import('firebase/firestore');
+      // Try to list products (likely to exist and be readable)
+      const q = query(collection(db, 'products'), limit(1));
+      const connectionPromise = getDocs(q);
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout')), 5000)
+      );
+      await Promise.race([connectionPromise, timeoutPromise]);
+      console.log("Database connection verified via products collection.");
+      return true;
+    } catch (error) {
+      console.warn(`Database connection attempt ${i + 1} failed:`, error);
+      if (i < retries - 1) await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
-}
-testConnection();
+  return false;
+};
 
 export const loginWithGoogle = async () => {
   try {

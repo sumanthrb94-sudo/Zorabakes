@@ -207,7 +207,14 @@ export const Cart = () => {
       {/* Checkout Button */}
       <div className="fixed bottom-[72px] left-0 right-0 max-w-[428px] mx-auto bg-white border-t border-gray-100 p-4 z-30">
         <button 
-          onClick={() => navigate('/checkout')}
+          onClick={() => navigate('/checkout', { 
+            state: { 
+              deliveryDate, 
+              deliveryTime, 
+              giftWrap,
+              grandTotal
+            } 
+          })}
           disabled={!deliveryDate || !deliveryTime}
           className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg transition-colors flex items-center justify-center gap-2 ${
             !deliveryDate || !deliveryTime

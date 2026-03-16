@@ -1,7 +1,7 @@
 import React from 'react';
 import { Product } from '../types';
 import { useCart } from '../context/CartContext';
-import { Plus, Minus, Heart } from 'lucide-react';
+import { Plus, Minus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ProductCardProps {
@@ -11,7 +11,6 @@ interface ProductCardProps {
 
 export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
   const { cart, addToCart, updateQuantity } = useCart();
-  const [isWishlisted, setIsWishlisted] = React.useState(false);
 
   // Find if the default variant is in cart
   const defaultVariant = product.variants[0];
@@ -37,25 +36,12 @@ export const ProductCard = ({ product, onQuickView }: ProductCardProps) => {
     if (cartItem) updateQuantity(cartItem.id, quantity - 1);
   };
 
-  const toggleWishlist = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsWishlisted(!isWishlisted);
-  };
-
   return (
     <motion.div 
       whileHover={{ y: -4, boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)' }}
       onClick={() => onQuickView(product)}
       className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100 relative cursor-pointer flex flex-col h-full transition-shadow duration-300"
     >
-      <motion.button 
-        whileTap={{ scale: 0.9 }}
-        onClick={toggleWishlist}
-        className="absolute top-3 right-3 z-10 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shadow-sm"
-      >
-        <Heart size={16} fill={isWishlisted ? '#ef4444' : 'none'} color={isWishlisted ? '#ef4444' : 'currentColor'} />
-      </motion.button>
-
       {product.isEggless && (
         <div className="absolute top-3 left-3 z-10 bg-green-100/90 backdrop-blur-sm text-green-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 shadow-sm">
           <div className="w-2 h-2 rounded-full bg-green-500"></div>

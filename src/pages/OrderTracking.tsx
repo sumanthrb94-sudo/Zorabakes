@@ -1,25 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Package, Truck, MapPin, Phone, MessageCircle, Search } from 'lucide-react';
+import { CheckCircle2, Clock, Package, Truck, MapPin, Phone, MessageCircle, Search, RefreshCw } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Order } from '../types';
+import { useAuth } from '../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export const OrderTracking = () => {
+  const { isAdmin } = useAuth();
   const [searchParams] = useSearchParams();
   const orderIdParam = searchParams.get('id');
   const [orderIdInput, setOrderIdInput] = useState(orderIdParam || '');
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (orderIdParam) {
       setLoading(true);
       const unsubscribe = onSnapshot(doc(db, 'orders', orderIdParam), (docSnap) => {
         if (docSnap.exists()) {
-          setOrder(docSnap.data());
+          setOrder({ id: docSnap.id, ...docSnap.data() });
           setError('');
         } else {
           setError('Order not found. Please check the ID.');
@@ -28,7 +31,7 @@ export const OrderTracking = () => {
         setLoading(false);
       }, (err) => {
         console.error("Error tracking order:", err);
-        setError('Failed to track order. Please try again.');
+        setError('Failed to track order. You may be offline or the order ID is invalid.');
         setLoading(false);
       });
 
@@ -36,11 +39,32 @@ export const OrderTracking = () => {
     }
   }, [orderIdParam]);
 
+  const handleNextStatus = async () => {
+    if (!order || !order.id) return;
+    
+    const statuses = ['received', 'confirmed', 'baking', 'quality_check', 'out_for_delivery', 'delivered'];
+    const currentIndex = statuses.indexOf(order.status);
+    
+    if (currentIndex < statuses.length - 1) {
+      setUpdating(true);
+      try {
+        await updateDoc(doc(db, 'orders', order.id), {
+          status: statuses[currentIndex + 1]
+        });
+        toast.success(`Status updated to ${statuses[currentIndex + 1]}`);
+      } catch (err) {
+        console.error("Error updating status:", err);
+        toast.error("Failed to update status");
+      } finally {
+        setUpdating(false);
+      }
+    }
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (orderIdInput.trim()) {
       window.history.pushState({}, '', `?id=${orderIdInput.trim()}`);
-      // Trigger effect by updating search params (manually since we are not using navigate for simplicity here)
       const url = new URL(window.location.href);
       url.searchParams.set('id', orderIdInput.trim());
       window.location.href = url.toString();
@@ -131,7 +155,19 @@ export const OrderTracking = () => {
               transition={{ delay: 0.1 }}
               className="bg-white rounded-3xl p-6 shadow-sm"
             >
-              <h3 className="font-bold text-[var(--color-chocolate)] mb-6">Order Status</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-[var(--color-chocolate)]">Order Status</h3>
+                {isAdmin && (
+                  <button 
+                    onClick={handleNextStatus}
+                    disabled={updating || currentStatusIndex === steps.length - 1}
+                    className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-terracotta)] bg-[var(--color-beige)] px-3 py-1.5 rounded-full hover:bg-[var(--color-cream)] transition-colors disabled:opacity-50"
+                  >
+                    <RefreshCw size={12} className={updating ? 'animate-spin' : ''} />
+                    Update Status
+                  </button>
+                )}
+              </div>
               
               <div className="relative pl-4">
                 {/* Vertical Line */}

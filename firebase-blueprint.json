@@ -55,6 +55,22 @@
         "deliverySlot": { "type": "string" }
       },
       "required": ["id", "userId", "items", "total", "status", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "An in-app notification for the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["order_status", "promotion", "system"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "orderId": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -69,6 +85,10 @@
     "orders": {
       "schema": "Order",
       "description": "Collection of customer orders"
+    },
+    "notifications": {
+      "schema": "Notification",
+      "description": "Collection of user notifications"
     }
   }
 }

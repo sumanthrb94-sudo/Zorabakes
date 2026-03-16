@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User as FirebaseUser, onAuthStateChanged } from 'firebase/auth';
 import { auth, loginWithGoogle, logout as firebaseLogout } from '../firebase';
-import { getDocument, createDocument } from '../services/firestore';
+import { getDocument, createDocument, updateDocument } from '../services/firestore';
+import { NotificationService } from '../services/NotificationService';
+import { Address } from '../types';
 
 interface UserProfile {
   uid: string;
@@ -10,6 +12,8 @@ interface UserProfile {
   role: 'admin' | 'customer';
   points: number;
   createdAt: string;
+  addresses?: Address[];
+  phone?: string;
 }
 
 interface AuthContextType {
@@ -18,6 +22,7 @@ interface AuthContextType {
   loading: boolean;
   login: () => Promise<void>;
   logout: () => Promise<void>;
+  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -29,31 +34,60 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let notificationUnsubscribe: (() => void) | undefined;
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
         // Fetch or create profile
-        let userProfile = await getDocument<UserProfile>('users', firebaseUser.uid);
-        if (!userProfile) {
-          const newProfile: UserProfile = {
+        try {
+          let userProfile = await getDocument<UserProfile>('users', firebaseUser.uid);
+          if (!userProfile) {
+            const newProfile: UserProfile = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email || '',
+              name: firebaseUser.displayName || 'Guest',
+              role: firebaseUser.email === 'sumanthrb94@gmail.com' ? 'admin' : 'customer',
+              points: 0,
+              createdAt: new Date().toISOString(),
+            };
+            await createDocument('users', newProfile, firebaseUser.uid);
+            userProfile = newProfile;
+          }
+          setProfile(userProfile);
+        } catch (err) {
+          console.error("Failed to fetch profile, using fallback:", err);
+          setProfile({
             uid: firebaseUser.uid,
             email: firebaseUser.email || '',
             name: firebaseUser.displayName || 'Guest',
             role: firebaseUser.email === 'sumanthrb94@gmail.com' ? 'admin' : 'customer',
             points: 0,
             createdAt: new Date().toISOString(),
-          };
-          await createDocument('users', newProfile, firebaseUser.uid);
-          userProfile = newProfile;
+          });
         }
-        setProfile(userProfile);
+
+        // Initialize Notifications
+        try {
+          NotificationService.requestPermission();
+          notificationUnsubscribe = NotificationService.listenToOrderUpdates(firebaseUser.uid);
+        } catch (err) {
+          console.warn("Notification service failed to initialize:", err);
+        }
       } else {
         setProfile(null);
+        if (notificationUnsubscribe) {
+          notificationUnsubscribe();
+          notificationUnsubscribe = undefined;
+        }
       }
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (notificationUnsubscribe) notificationUnsubscribe();
+    };
   }, []);
 
   const login = async () => {
@@ -64,10 +98,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await firebaseLogout();
   };
 
+  const updateProfile = async (data: Partial<UserProfile>) => {
+    if (!user) return;
+    await updateDocument('users', user.uid, data);
+    setProfile(prev => prev ? { ...prev, ...data } : null);
+  };
+
   const isAdmin = profile?.role === 'admin';
 
+  const value = useMemo(() => ({
+    user,
+    profile,
+    loading,
+    login,
+    logout,
+    updateProfile,
+    isAdmin
+  }), [user, profile, loading, isAdmin]);
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
