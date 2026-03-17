@@ -15,6 +15,15 @@ export const Profile = () => {
     { icon: Settings, label: 'Account Settings', desc: 'Password, notifications, preferences', path: '/settings' },
   ];
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--color-beige)]">
@@ -27,20 +36,26 @@ export const Profile = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--color-beige)] flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-[var(--color-terracotta)] mb-6 shadow-sm">
-          <User size={48} />
+      <div className="min-h-screen bg-[var(--color-beige)] flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-full max-w-[320px] flex flex-col items-center">
+          <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-[var(--color-terracotta)] mb-8 shadow-sm border-4 border-white">
+            <User size={40} />
+          </div>
+          
+          <h1 className="font-script text-5xl text-[var(--color-chocolate)] mb-4">Join Zora's Circle</h1>
+          
+          <p className="text-[var(--color-chocolate)] opacity-70 text-lg leading-relaxed mb-12 w-full">
+            Log in to track orders, save addresses, and earn loyalty points for free treats!
+          </p>
+          
+          <button 
+            onClick={login}
+            className="w-full bg-[var(--color-terracotta)] text-white py-5 rounded-full font-bold text-lg shadow-xl hover:bg-[var(--color-chocolate)] transition-all transform active:scale-95 flex items-center justify-center gap-3"
+          >
+            <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5 bg-white rounded-full p-0.5" />
+            Sign In with Google
+          </button>
         </div>
-        <h2 className="text-2xl font-bold text-[var(--color-chocolate)] mb-2">Join Zora's Circle</h2>
-        <p className="text-gray-600 mb-8 max-w-xs">
-          Log in to track orders, save addresses, and earn loyalty points for free treats!
-        </p>
-        <button 
-          onClick={login}
-          className="w-full max-w-xs bg-[var(--color-terracotta)] text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-[var(--color-chocolate)] transition-colors"
-        >
-          Log In with Google
-        </button>
       </div>
     );
   }
@@ -133,7 +148,7 @@ export const Profile = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          onClick={logout}
+          onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 p-4 text-red-500 font-semibold text-sm bg-white rounded-2xl shadow-sm hover:bg-red-50 transition-colors"
         >
           <LogOut size={18} />

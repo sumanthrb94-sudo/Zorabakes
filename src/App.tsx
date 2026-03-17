@@ -19,6 +19,7 @@ import { OrderTracking } from './pages/OrderTracking';
 import { OrderHistory } from './pages/OrderHistory';
 import { Notifications } from './pages/Notifications';
 import { SavedAddresses } from './pages/SavedAddresses';
+import { ProtectedRoute } from './components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -28,7 +29,7 @@ export default function App() {
           <CartProvider>
             <Router>
               <Routes>
-                <Route path="/" element={<Layout />}>
+                <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
                   <Route index element={<Home />} />
                   <Route path="shop" element={<Shop />} />
                   <Route path="cart" element={<Cart />} />

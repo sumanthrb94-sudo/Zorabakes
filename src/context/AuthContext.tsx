@@ -95,7 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    await firebaseLogout();
+    try {
+      await firebaseLogout();
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error("Logout error:", error);
+      throw error;
+    }
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
